@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101114">
+  <title>MRF LED · sterowanie</title>
+  <style>
+    :root{color-scheme:dark;--bg:#101114;--card:#191a1f;--muted:#9b9ca5;--line:#2a2b32;--accent:#a8f06b;--white:#f5f5f1}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 85% -5%,#303622 0,transparent 38%),var(--bg);color:var(--white);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100svh}
+    main{width:min(100%,560px);margin:auto;padding:calc(20px + env(safe-area-inset-top)) 20px calc(30px + env(safe-area-inset-bottom))}
+    header{display:flex;justify-content:space-between;align-items:center;margin:4px 0 28px}.eyebrow{color:var(--accent);font-size:11px;font-weight:800;letter-spacing:.17em;text-transform:uppercase}.brand{font-size:14px;color:#b5b6bd}
+    h1{font-size:34px;line-height:1.06;letter-spacing:-.04em;margin:8px 0 10px}.intro{color:var(--muted);margin:0 0 24px;font-size:14px}
+    .connection{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:17px;margin-bottom:15px}.connection-top{display:flex;align-items:center;gap:11px;margin-bottom:15px}.dot{width:11px;height:11px;border-radius:50%;background:#777;box-shadow:0 0 0 5px #7772}.dot.on{background:var(--accent);box-shadow:0 0 0 5px #a8f06b22}.status{font-weight:700}.device{font-size:12px;color:var(--muted);margin-top:2px}.connect{width:100%;height:54px;border:0;border-radius:15px;background:var(--accent);color:#151710;font-size:16px;font-weight:800;cursor:pointer}.connect:disabled{opacity:.55;cursor:wait}.connect.disconnect{background:#303137;color:var(--white)}
+    section{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:19px;margin:14px 0}.section-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:15px}.section-head h2{font-size:16px;margin:0}.hint{font-size:12px;color:var(--muted)}
+    .colors{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.color{min-height:86px;border:1px solid #ffffff16;border-radius:17px;color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;padding:12px;position:relative;overflow:hidden;text-shadow:0 1px 8px #0008;transition:transform .12s,filter .12s}.color:active,.action:active{transform:scale(.97)}.color:before{content:"";position:absolute;width:70px;height:70px;border-radius:50%;background:#ffffff35;filter:blur(20px);top:-30px;right:-15px}.color span{z-index:1}.red{background:#922e36}.green{background:#376e42}.blue{background:#344e8a}.white{background:#77766f}.purple{background:#694182}.orange{background:#945026}
+    .range-row{display:flex;align-items:center;gap:13px}.range-row input{width:100%;accent-color:var(--accent);height:30px}.value{font-variant-numeric:tabular-nums;font-weight:800;min-width:49px;text-align:right}.scale{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:5px}
+    select{appearance:none;width:100%;height:52px;border-radius:14px;border:1px solid var(--line);background:#222329;color:var(--white);padding:0 15px;font-family:inherit;font-size:15px;font-weight:600}.animation-note{font-size:12px;color:var(--muted);margin:11px 0 0}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.action{height:54px;border-radius:15px;border:1px solid var(--line);background:#25262c;color:var(--white);font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}.action.off{background:#5b292c;border-color:#804347}.foot{color:#74757d;text-align:center;font-size:11px;padding:8px 10px 0}
+    @media(min-width:500px){main{padding-top:36px}.colors{gap:12px}.color{min-height:96px}}
+  </style>
+</head>
+<body>
+<main>
+  <header><div class="eyebrow">BLE · WS2812B</div><div class="brand">MRF LED</div></header>
+  <h1>Światło<br>pod kontrolą.</h1>
+  <p class="intro">Połącz się z ESP32 i steruj swoją taśmą 8 LED.</p>
+
+  <div class="connection" aria-live="polite">
+    <div class="connection-top"><span id="dot" class="dot"></span><div><div id="status" class="status">Rozłączono</div><div id="deviceName" class="device">ESP32 · MRF_LED_BLE</div></div></div>
+    <button id="connect" class="connect">Połącz z lampą</button>
+  </div>
+
+  <section>
+    <div class="section-head"><h2>Kolor</h2><span class="hint">wybierz efekt stały</span></div>
+    <div class="colors">
+      <button class="color red" data-command="RED"><span>Czerwony</span></button>
+      <button class="color green" data-command="GREEN"><span>Zielony</span></button>
+      <button class="color blue" data-command="BLUE"><span>Niebieski</span></button>
+      <button class="color white" data-command="WHITE"><span>Biały</span></button>
+      <button class="color purple" data-command="PURPLE"><span>Fioletowy</span></button>
+      <button class="color orange" data-command="ORANGE"><span>Pomarańczowy</span></button>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>Jasność</h2><span class="hint">płynna regulacja</span></div>
+    <div class="range-row"><input id="brightness" type="range" min="0" max="255" value="80" aria-label="Jasność"><output id="brightnessValue" class="value">80 / 255</output></div>
+    <div class="scale"><span>0</span><span>255</span></div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>Animacja</h2><span class="hint">tryb świecenia</span></div>
+    <select id="animation" aria-label="Wybierz animację"><option value="solid">Stały kolor</option><option value="RAINBOW">Tęcza</option></select>
+    <p class="animation-note">Tęcza działa na ESP32. Pozostałe kolory świecą stale.</p>
+  </section>
+
+  <div class="actions"><button id="off" class="action off">Wyłącz światło</button><button id="reconnect" class="action">Połącz ponownie</button></div>
+  <p class="foot">Sterowanie lokalne przez Bluetooth Low Energy</p>
+</main>
+<script>
+(() => {
+  const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+  const CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+  let device = null, characteristic = null, writeQueue = Promise.resolve(), sliderTimer;
+  const $ = id => document.getElementById(id);
+  const status = (text, connected = false) => { $('status').textContent = text; $('dot').classList.toggle('on', connected); $('connect').textContent = connected ? 'Rozłącz' : 'Połącz z lampą'; $('connect').classList.toggle('disconnect', connected); };
+  const setBusy = busy => { $('connect').disabled = busy; if (busy) status('Łączenie…'); };
+  async function connect() {
+    if (!navigator.bluetooth) { status('Brak Web Bluetooth'); alert('Otwórz ten panel w Bluefy na iPhonie albo w przeglądarce obsługującej Web Bluetooth. Wymagane jest połączenie HTTPS.'); return; }
+    try {
+      if (device?.gatt?.connected) { device.gatt.disconnect(); return; }
+      setBusy(true);
+      device = await navigator.bluetooth.requestDevice({filters:[{name:'MRF_LED_BLE'}], optionalServices:[SERVICE_UUID]});
+      device.addEventListener('gattserverdisconnected', () => { characteristic = null; status('Rozłączono'); });
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService(SERVICE_UUID);
+      characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+      $('deviceName').textContent = device.name || 'ESP32';
+      status('Połączono', true);
+    } catch (error) {
+      if (error.name !== 'NotFoundError' && error.name !== 'AbortError') { console.error(error); status(error.message?.includes('GATT') ? 'Błąd usługi BLE' : 'Nie udało się połączyć'); }
+      else status('Rozłączono');
+    } finally { $('connect').disabled = false; }
+  }
+  function send(command) {
+    if (!characteristic) { status('Najpierw połącz lampę'); return; }
+    const bytes = new TextEncoder().encode(command);
+    writeQueue = writeQueue.then(async () => {
+      if (!characteristic) throw new Error('Połączenie zostało przerwane');
+      if (characteristic.properties.write) await characteristic.writeValueWithResponse(bytes);
+      else if (characteristic.properties.writeWithoutResponse) await characteristic.writeValueWithoutResponse(bytes);
+      else throw new Error('Charakterystyka nie obsługuje zapisu');
+    }).catch(error => { console.error(error); status('Błąd wysyłania'); });
+  }
+  $('connect').addEventListener('click', connect);
+  $('reconnect').addEventListener('click', connect);
+  document.querySelectorAll('[data-command]').forEach(button => button.addEventListener('click', () => send(button.dataset.command)));
+  $('off').addEventListener('click', () => { send('OFF'); $('animation').value = 'solid'; });
+  $('animation').addEventListener('change', event => { if (event.target.value === 'RAINBOW') send('RAINBOW'); });
+  $('brightness').addEventListener('input', event => {
+    const value = event.target.value; $('brightnessValue').textContent = `${value} / 255`;
+    clearTimeout(sliderTimer); sliderTimer = setTimeout(() => send(`BRIGHTNESS:${value}`), 100);
+  });
+})();
+</script>
+</body>
+</html>
